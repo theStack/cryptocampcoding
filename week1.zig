@@ -29,6 +29,23 @@ fn mod_inv(number: u256, prime_modulus: u256) u256 {
     return fast_exp(number, prime_modulus - 2, prime_modulus);
 }
 
+fn diffie_hellman_example() void {
+    // diffie-hellman example from
+    // "Hoffstein, Pipher, Silverman - An Introduction to Mathematical Cryptography", p. 66, Example 2.7
+    const dh_prime: u256 = 941;
+    const primitive_root: u256 = 627;
+    const secret_a = 347;
+    const public_A = fast_exp(primitive_root, secret_a, dh_prime);
+    const secret_b = 781;
+    const public_B = fast_exp(primitive_root, secret_b, dh_prime);
+    std.debug.print("\npublic A: {d}\npublic B: {d}\n", .{public_A, public_B});
+    const shared_secret_a = fast_exp(public_B, secret_a, dh_prime);
+    const shared_secret_b = fast_exp(public_A, secret_b, dh_prime);
+    std.debug.print("shared secret A*b: {d}\n", .{shared_secret_a});
+    std.debug.print("shared secret B*a: {d}\n", .{shared_secret_b});
+    std.debug.assert(shared_secret_a == shared_secret_b);
+}
+
 pub fn main() !void {
     std.debug.print("Hello cryptocamp!\n", .{});
     var result = fast_exp(123, 42, 31337);
@@ -64,4 +81,6 @@ pub fn main() !void {
     // 112217903953090270193476458320138877800162620050754748174923495265476845425532
     std.debug.print("Result5: {d}\n", .{result});
     std.debug.assert(result == 112217903953090270193476458320138877800162620050754748174923495265476845425532);
+
+    diffie_hellman_example();
 }
