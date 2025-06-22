@@ -13,9 +13,14 @@ fn fast_exp(base: u256, exponent: u256, modulus: u256) u256 {
         squarings_table[i] = a_i;
     }
 
-    const result: u256 = 42;
-    std.debug.print("Calculating {d}, {d}, {d}...\n", .{base, exponent, modulus});
-    // TODO: implement
+    var result: u256 = 1;
+    for (0..256) |_i| {
+        const i: u8 = @intCast(_i);
+        if ((exponent & (@as(u256, 1) << i)) != 0) {
+            result = (result * squarings_table[i]) % modulus;
+        }
+    }
+
     return result;
 }
 
