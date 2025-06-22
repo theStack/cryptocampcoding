@@ -24,6 +24,11 @@ fn fast_exp(base: u256, exponent: u256, modulus: u256) u256 {
     return result;
 }
 
+// week 1, exercise 3: compute modular inverse
+fn mod_inv(number: u256, prime_modulus: u256) u256 {
+    return fast_exp(number, prime_modulus - 2, prime_modulus);
+}
+
 pub fn main() !void {
     std.debug.print("Hello cryptocamp!\n", .{});
     var result = fast_exp(123, 42, 31337);
@@ -33,10 +38,25 @@ pub fn main() !void {
     // 12516
     std.debug.print("Result1: {d}\n", .{result});
 
-    result = fast_exp(12345678901234567890, 111222333444555, 115792089237316195423570985008687907853269984665640564039457584007913129639747);
+    result = fast_exp(12345678901234567890, 111222333444555, (1<<256)-189);
     // expected according to Python:
     //
     // $ python3 -c "print(pow(12345678901234567890, 111222333444555, 2**256-189))"
     // 112673583709934996208095005760186049717637847226582546385812839628819812331205
     std.debug.print("Result2: {d}\n", .{result});
+
+    result = mod_inv(23, (1<<256)-189);
+    // $ python3 -c "print(pow(23, -1, 2**256-189))"
+    // 75516579937380127450154990223057331208654337825417759156167989570378128025922
+    std.debug.print("Result3: {d}\n", .{result});
+
+    result = mod_inv(1<<255, (1<<256)-189);
+    // $ python3 -c "print(pow(1<<255, -1, 2**256-189))"
+    // 72293473703721222539584001222355413368708244394421092892359761444093911626932
+    std.debug.print("Result4: {d}\n", .{result});
+
+    result = mod_inv(0xdeadbeefdeadbeef, (1<<256)-189);
+    // $ python3 -c "print(pow(0xdeadbeefdeadbeef, -1, 2**256-189))"
+    // 112217903953090270193476458320138877800162620050754748174923495265476845425532
+    std.debug.print("Result5: {d}\n", .{result});
 }
