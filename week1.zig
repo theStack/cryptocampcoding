@@ -46,6 +46,22 @@ fn diffie_hellman_example() void {
     std.debug.assert(shared_secret_a == shared_secret_b);
 }
 
+// week 1, exercise 4: ElGamal cipher
+fn el_gamal_encrypt(msg: u256, k: u256, pubkey: u256, g: u256, p: u256) struct { u256, u256 } {
+    // c1 = g ^ k (mod p)
+    // c2 = m * pubkey ^ k (mod p)
+    const c1: u256 = fast_exp(g, k, p);
+    const c2: u256 = @intCast((@as(u512, msg) * fast_exp(pubkey, k, p)) % p);
+    return .{ c1, c2 };
+}
+
+fn el_gamal_decrypt(msg_c1: u256, msg_c2: u256, privkey: u256, p: u256) u256 {
+    // x = c1 ^ privkey (mod p)
+    // msg = c2 * x ^ (-1)
+    const x_inv = mod_inv(fast_exp(msg_c1, privkey, p), p);
+    return @intCast((@as(u512, msg_c2) * x_inv) % p);
+}
+
 pub fn main() !void {
     std.debug.print("Hello cryptocamp!\n", .{});
     var result = fast_exp(123, 42, 31337);
@@ -83,4 +99,15 @@ pub fn main() !void {
     std.debug.assert(result == 112217903953090270193476458320138877800162620050754748174923495265476845425532);
 
     diffie_hellman_example();
+
+    // Example 2.8
+    const p: u256 = 467;
+    const g: u256 = 2;
+    const alice_seckey: u256 = 153;
+    const alice_pubkey = fast_exp(g, alice_seckey, p);
+    const msg_plain: u256 = 331;
+    const msg_encrypted = el_gamal_encrypt(msg_plain, 197, alice_pubkey, g, p);
+    std.debug.print("\nElGammal, encrypted msg:\nc1 = {d}\nc2 = {d}\n", .{msg_encrypted[0], msg_encrypted[1]});
+    const msg_decrypted = el_gamal_decrypt(msg_encrypted[0], msg_encrypted[1], alice_seckey, p);
+    std.debug.assert(msg_decrypted == msg_plain);
 }
