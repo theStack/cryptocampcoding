@@ -62,6 +62,15 @@ fn el_gamal_decrypt(msg_c1: u256, msg_c2: u256, privkey: u256, p: u256) u256 {
     return @intCast((@as(u512, msg_c2) * x_inv) % p);
 }
 
+fn test_el_gamal(p: u256, g: u256, seckey: u256, k: u256, msg: u256, c1: u256, c2: u256) void {
+    const pubkey = fast_exp(g, seckey, p);
+    const msg_encrypted = el_gamal_encrypt(msg, k, pubkey, g, p);
+    std.debug.assert(msg_encrypted[0] == c1);
+    std.debug.assert(msg_encrypted[1] == c2);
+    const msg_decrypted = el_gamal_decrypt(c1, c2, seckey, p);
+    std.debug.assert(msg_decrypted == msg);
+}
+
 pub fn main() !void {
     std.debug.print("Hello cryptocamp!\n", .{});
     var result = fast_exp(123, 42, 31337);
@@ -104,10 +113,10 @@ pub fn main() !void {
     const p: u256 = 467;
     const g: u256 = 2;
     const alice_seckey: u256 = 153;
-    const alice_pubkey = fast_exp(g, alice_seckey, p);
-    const msg_plain: u256 = 331;
-    const msg_encrypted = el_gamal_encrypt(msg_plain, 197, alice_pubkey, g, p);
-    std.debug.print("\nElGammal, encrypted msg:\nc1 = {d}\nc2 = {d}\n", .{msg_encrypted[0], msg_encrypted[1]});
-    const msg_decrypted = el_gamal_decrypt(msg_encrypted[0], msg_encrypted[1], alice_seckey, p);
-    std.debug.assert(msg_decrypted == msg_plain);
+    const k: u256 = 197;
+    const msg: u256 = 331;
+    const c1: u256 = 87;
+    const c2: u256 = 57;
+
+    test_el_gamal(p, g, alice_seckey, k, msg, c1, c2);
 }
