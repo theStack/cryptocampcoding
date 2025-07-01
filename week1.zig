@@ -2,23 +2,14 @@ const std = @import("std");
 
 // week 1, exercise 1: use square-and-multiply algorithm
 fn fast_exp(base: u256, exponent: u256, modulus: u256) u256 {
-    var squarings_table: [256]u256 = undefined;
-    var a_i: u256 = undefined;
-    for (0..256) |i| {
-        if (i == 0) {
-            a_i = base;
-        } else {
-            a_i = @intCast((@as(u512, a_i) * a_i) % modulus);
-        }
-        squarings_table[i] = a_i;
-    }
-
     var result: u256 = 1;
+    var a_i: u256 = base; // squaring for next loop iteration (a_i = base ^ (2^i))
     for (0..256) |_i| {
         const i: u8 = @intCast(_i);
         if ((exponent & (@as(u256, 1) << i)) != 0) {
-            result = @intCast((@as(u512, result) * squarings_table[i]) % modulus);
+            result = @intCast((@as(u512, result) * a_i) % modulus);
         }
+        a_i = @intCast((@as(u512, a_i) * a_i) % modulus);
     }
 
     return result;
