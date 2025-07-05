@@ -38,9 +38,33 @@ fn ge_add(p1: *const GE, p2: *const GE) GE {
 const GEJ = struct { x: FE, y: FE, z: FE, inf: bool };
 const point_at_infinity_gej = GEJ { .x = 0, .y = 0, .z = 0, .inf = true };
 
+// use "add-1986-cc" addition formulas
+// [https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html]
 fn gej_add(p1: *const GEJ, p2: *const GEJ) GEJ {
-    // TODO: implement
-    return GEJ { .x = p1.x + 1, .y = p2.y + 2, .z = 3, .inf = false };
+    // trivial cases
+    if (p1.inf) return p2.*;
+    if (p2.inf) return p1.*;
+    // TODO: what is the equivalent here for "same x"?
+
+    const z1_squared = fe_mul(p1.z, p1.z);
+    const z1_cubed = fe_mul(z1_squared, p1.z);
+    const z2_squared = fe_mul(p2.z, p2.z);
+    const z2_cubed = fe_mul(z2_squared, p2.z);
+    const uu1 = fe_mul(p1.x, z2_squared);
+    const uu2 = fe_mul(p2.x, z1_squared);
+    const s1 = fe_mul(p1.y, z2_cubed);
+    const s2 = fe_mul(p2.y, z1_cubed);
+    const p = fe_sub(uu2, uu1);
+    const r = fe_sub(s2, s1);
+    const r_squared = fe_mul(r, r);
+    const p_squared = fe_mul(p, p);
+    const p_cubed = fe_mul(p_squared, p);
+
+    const x_result = fe_sub(r_squared, fe_mul(fe_add(uu1, uu2), p_squared));
+    const y_result = fe_sub(fe_mul(r, fe_sub(fe_mul(uu1, p_squared), x_result)), fe_mul(s1, p_cubed));
+    const z_result = fe_mul(fe_mul(p1.z, p2.z), p);
+    return if (z_result == 0) point_at_infinity_gej else
+        GEJ { .x = x_result, .y = y_result, .z = z_result, .inf = false };
 }
 
 fn gej_to_ge(p: *const GEJ) GE {
@@ -76,6 +100,7 @@ fn test_point_add_jacobian(tp1: SimplePoint3, tp2: SimplePoint3, res: SimplePoin
     const p2 = simple_point3_to_gej(tp2);
     const result_expected = simple_point2_to_ge(res);
     const result_actual_gej = gej_add(&p1, &p2);
+    //@import("std").debug.print("jacobian result: {d}, {d}, {d}\n", .{result_actual_gej.x, result_actual_gej.y, result_actual_gej.z});
     const result_actual = gej_to_ge(&result_actual_gej);
     @import("std").debug.assert(ge_equal(&result_actual, &result_expected));
 }
