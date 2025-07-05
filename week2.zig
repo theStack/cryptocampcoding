@@ -92,12 +92,33 @@ fn gej_to_ge(p: *const GEJ) GE {
     return GE { .x = fe_div(p.x, z2), .y = fe_div(p.y, z3), .inf = false };
 }
 
+// week 2, secp256k1 exercise 3:
+// Implement scalar multiplication for secp256k1
+const Scalar = u256;
+
+fn scalar_mul_gej(s: Scalar, p: *const GEJ) GEJ {
+    var result = point_at_infinity_gej;
+    var p_i = p.*; // doubled point for next loop iteration (p_i = p * (2^i))
+    for (0..256) |_i| {
+        const i: u8 = @intCast(_i);
+        if ((s & (@as(u256, 1) << i)) != 0) {
+            result = gej_add(&result, &p_i);
+        }
+        p_i = gej_add(&p_i, &p_i);
+    }
+    return result;
+}
+
 // more convenient point types for test vectors (null = point at infinity)
 const SimplePoint2 = ?struct{FE, FE};
 const SimplePoint3 = ?struct{FE, FE, FE};
 
 fn simple_point2_to_ge(tp: SimplePoint2) GE {
     return if (tp != null) GE { .x = tp.?[0], .y = tp.?[1], .inf = false } else point_at_infinity;
+}
+
+fn simple_point2_to_gej(tp: SimplePoint2) GEJ {
+    return if (tp != null) GEJ { .x = tp.?[0], .y = tp.?[1], .z = 1, .inf = false } else point_at_infinity_gej;
 }
 
 fn simple_point3_to_gej(tp: SimplePoint3) GEJ {
@@ -118,6 +139,14 @@ fn test_point_add_jacobian(tp1: SimplePoint3, tp2: SimplePoint3, res: SimplePoin
     const p2 = simple_point3_to_gej(tp2);
     const result_expected = simple_point2_to_ge(res);
     const result_actual_gej = gej_add(&p1, &p2);
+    const result_actual = gej_to_ge(&result_actual_gej);
+    @import("std").debug.assert(ge_equal(&result_actual, &result_expected));
+}
+
+fn test_point_mul(s: Scalar, tp: SimplePoint2, res: SimplePoint2) void {
+    const p = simple_point2_to_gej(tp);
+    const result_expected = simple_point2_to_ge(res);
+    const result_actual_gej = scalar_mul_gej(s, &p);
     const result_actual = gej_to_ge(&result_actual_gej);
     @import("std").debug.assert(ge_equal(&result_actual, &result_expected));
 }
@@ -191,5 +220,27 @@ pub fn main() !void {
           56745928453254477537417735654158445415425453625586007664329168279192608303666},
         .{21324256287414615615026299379536579336529998865990184416926039607504524853626,
           96719670966356830360698314514227297774284915420887284954650836535688914930874}
+    );
+
+    test_point_mul(
+        23529072936145521956642440150769408702836782170707519110832596096096916532363,
+        .{94777218176490725267733209794395406270863807953747235979017564313980479098344,
+          53121120406880321033414824968851949358991212541220678285657788880408683486672},
+        .{81492582484984365721511233996054540050314813088236204730182464710703690737195,
+          84165397430175583340352582740254662715932722835371860159802475562062898918484}
+    );
+    test_point_mul(
+        77770687059601253501098075906318324640585620643934538062621691587089455400301,
+        .{5187380010089560191829928600869675928625207216422014112981972591844926771008,
+          75026050083095897004323393777174635055491620440662638678606562665317466685019},
+        .{76999255841974189685876230118581110410155956505185745130247574937430232984638,
+          87571171775685157828750403037960903210473289232782306139148947195874900187006}
+    );
+    test_point_mul(
+        3747619523960563074315083315669137577217731866086110333821423552891044218266,
+        .{66371586610273545144505648512343824229224003523952192165787799288317344396675,
+          6489011411151914877089190610663845093649879070897583530615192453262848111419},
+        .{109441138145498884726545575659592733193661671281368885246963601136369148387669,
+          83708880322787879701338478937074052809697986569225329829504559758598509123336}
     );
 }
