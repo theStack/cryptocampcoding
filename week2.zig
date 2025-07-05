@@ -38,13 +38,12 @@ fn ge_add(p1: *const GE, p2: *const GE) GE {
 const GEJ = struct { x: FE, y: FE, z: FE, inf: bool };
 const point_at_infinity_gej = GEJ { .x = 0, .y = 0, .z = 0, .inf = true };
 
-// use "add-1986-cc" addition formulas
+// use "add-1986-cc" addition and "dbl-1998-cmo" doubling formulas
 // [https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html]
 fn gej_add(p1: *const GEJ, p2: *const GEJ) GEJ {
     // trivial cases
     if (p1.inf) return p2.*;
     if (p2.inf) return p1.*;
-    // TODO: what is the equivalent here for "same x"?
 
     const z1_squared = fe_mul(p1.z, p1.z);
     const z1_cubed = fe_mul(z1_squared, p1.z);
@@ -54,6 +53,26 @@ fn gej_add(p1: *const GEJ, p2: *const GEJ) GEJ {
     const uu2 = fe_mul(p2.x, z1_squared);
     const s1 = fe_mul(p1.y, z2_cubed);
     const s2 = fe_mul(p2.y, z1_cubed);
+    if (uu1 == uu2) { // x-coordinates are equal
+        if (s1 != s2) { // y-coordinates are not equal -> case P + (-P)
+            return point_at_infinity_gej;
+        } else { // y-coordinates are equal -> case P + P (point doubling)
+            const x_squared = fe_mul(p1.x, p1.x);
+            const y_squared = fe_mul(p1.y, p1.y);
+            const y_quartic = fe_mul(y_squared, y_squared);
+
+            const s = fe_mul(fe_mul(4, p1.x), y_squared);
+            const m = fe_mul(3, x_squared); // a=0, so right term of addition is zero
+            const t = fe_sub(fe_mul(m, m), fe_mul(2, s));
+            return GEJ {
+                .x = t,
+                .y = fe_sub(fe_mul(m, fe_sub(s, t)), fe_mul(8, y_quartic)),
+                .z = fe_mul(fe_mul(2, p1.y), p1.z),
+                .inf = false,
+            };
+        }
+    }
+
     const p = fe_sub(uu2, uu1);
     const r = fe_sub(s2, s1);
     const r_squared = fe_mul(r, r);
@@ -63,8 +82,7 @@ fn gej_add(p1: *const GEJ, p2: *const GEJ) GEJ {
     const x_result = fe_sub(r_squared, fe_mul(fe_add(uu1, uu2), p_squared));
     const y_result = fe_sub(fe_mul(r, fe_sub(fe_mul(uu1, p_squared), x_result)), fe_mul(s1, p_cubed));
     const z_result = fe_mul(fe_mul(p1.z, p2.z), p);
-    return if (z_result == 0) point_at_infinity_gej else
-        GEJ { .x = x_result, .y = y_result, .z = z_result, .inf = false };
+    return GEJ { .x = x_result, .y = y_result, .z = z_result, .inf = false };
 }
 
 fn gej_to_ge(p: *const GEJ) GE {
@@ -100,7 +118,6 @@ fn test_point_add_jacobian(tp1: SimplePoint3, tp2: SimplePoint3, res: SimplePoin
     const p2 = simple_point3_to_gej(tp2);
     const result_expected = simple_point2_to_ge(res);
     const result_actual_gej = gej_add(&p1, &p2);
-    //@import("std").debug.print("jacobian result: {d}, {d}, {d}\n", .{result_actual_gej.x, result_actual_gej.y, result_actual_gej.z});
     const result_actual = gej_to_ge(&result_actual_gej);
     @import("std").debug.assert(ge_equal(&result_actual, &result_expected));
 }
