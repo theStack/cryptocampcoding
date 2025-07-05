@@ -16,7 +16,7 @@ fn fast_exp(base: u256, exponent: u256, modulus: u256) u256 {
 }
 
 // week 1, exercise 3: compute modular inverse
-fn mod_inv(number: u256, prime_modulus: u256) u256 {
+pub fn mod_inv(number: u256, prime_modulus: u256) u256 {
     return fast_exp(number, prime_modulus - 2, prime_modulus);
 }
 
