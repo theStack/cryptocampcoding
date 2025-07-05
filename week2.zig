@@ -33,6 +33,8 @@ fn ge_add(p1: *const GE, p2: *const GE) GE {
     return GE { .x = x_result, .y = y_result, .inf = false };
 }
 
+// week 2, secp256k1 exercise 2:
+// Implement jacobian point addition for secp256k1
 const GEJ = struct { x: FE, y: FE, z: FE, inf: bool };
 const point_at_infinity_gej = GEJ { .x = 0, .y = 0, .z = 0, .inf = true };
 
@@ -42,8 +44,10 @@ fn gej_add(p1: *const GEJ, p2: *const GEJ) GEJ {
 }
 
 fn gej_to_ge(p: *const GEJ) GE {
-    // TODO: implement
-    return GE { .x = p.x + 23, .y = 42, .inf = false };
+    if (p.inf) return point_at_infinity;
+    const z2 = fe_mul(p.z, p.z);
+    const z3 = fe_mul(z2, p.z);
+    return GE { .x = fe_div(p.x, z2), .y = fe_div(p.y, z3), .inf = false };
 }
 
 // more convenient point types for test vectors (null = point at infinity)
