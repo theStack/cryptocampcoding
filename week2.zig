@@ -1,12 +1,17 @@
+const std = @import("std");
+const week1 = @import("week1.zig");
+
 // week 2, secp256k1 exercise 1:
 // Implement affine point addition for secp256k1
 const FE = u256;
 const secp256k1_P: FE = (1<<256) - (1<<32) - 977;
 fn fe_add(f1: FE, f2: FE) FE { return @intCast((@as(u257, f1) + f2) % secp256k1_P); }
-fn fe_sub(f1: FE, f2: FE) FE { return fe_add(f1, secp256k1_P - f2); }
+fn fe_neg(f: FE) FE          { return secp256k1_P - f; }
+fn fe_sub(f1: FE, f2: FE) FE { return fe_add(f1, fe_neg(f2)); }
 fn fe_mul(f1: FE, f2: FE) FE { return @intCast((@as(u512, f1) * f2) % secp256k1_P); }
-fn fe_inv(f: FE) FE          { return @import("week1.zig").mod_inv(f, secp256k1_P); }
+fn fe_inv(f: FE) FE          { return week1.mod_inv(f, secp256k1_P); }
 fn fe_div(f1: FE, f2: FE) FE { return fe_mul(f1, fe_inv(f2)); }
+fn fe_pow(f1: FE, f2: FE) FE { return week1.fast_exp(f1, f2, secp256k1_P); }
 
 const GE = struct { x: FE, y: FE, inf: bool };
 const point_at_infinity = GE { .x = 0, .y = 0, .inf = true };
@@ -109,6 +114,34 @@ fn scalar_mul_gej(s: Scalar, p: *const GEJ) GEJ {
     return result;
 }
 
+// week 2, secp256k1 exercise 4:
+// Let P = (-6^((p+2)/9), 1) be a point on the secp256k1 curve. Let Q be the point
+// on the curve for which 3 * Q = 5 * G - lambda * P. What are the affine coordinates
+// of Q?
+const secp256k1_N: Scalar = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141;
+const G = GEJ {
+    .x = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798,
+    .y = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8,
+    .z = 1, .inf = false
+};
+
+fn exercise4_calculate_Q() void {
+    // solve for Q by multiplying both sides with the modular inverse of 3 (mod group order N):
+    // 3 * Q =  5 * G - lambda * P            | * 3^(-1)
+    // =>  Q = (5 * G - lambda * P) * 3^(-1)
+    const lambda: Scalar = 0x5363ad4cc05c30e0a5261c028812645a122e22ea20816678df02967c1b23bd72;
+    const P = GEJ { .x = fe_neg(fe_pow(6, fe_div(fe_add(secp256k1_P, 2), 9))), .y = 1, .z = 1, .inf = false };
+    std.debug.print("Exercise 4, affine coordinates of P:\nx = {d},\ny = {d}\n", .{P.x, P.y});
+    const l_times_P = scalar_mul_gej(lambda, &P);
+    const neg_l_times_P = GEJ { .x = l_times_P.x, .y = fe_neg(l_times_P.y), .z = l_times_P.z, .inf = false };
+    const five_G = scalar_mul_gej(5, &G);
+    const tmp_point = gej_add(&five_G, &neg_l_times_P);
+    const Q = scalar_mul_gej(week1.mod_inv(3, secp256k1_N), &tmp_point);
+    const Q_affine = gej_to_ge(&Q);
+    std.debug.print("Exercise 4, affine coordinates of Q:\nx = {d},\ny = {d}\n", .{Q_affine.x, Q_affine.y});
+    std.debug.assert(Q_affine.x % 1000 == 452);
+}
+
 // more convenient point types for test vectors (null = point at infinity)
 const SimplePoint2 = ?struct{FE, FE};
 const SimplePoint3 = ?struct{FE, FE, FE};
@@ -131,7 +164,7 @@ fn test_point_add_affine(tp1: SimplePoint2, tp2: SimplePoint2, res: SimplePoint2
     const p2 = simple_point2_to_ge(tp2);
     const result_expected = simple_point2_to_ge(res);
     const result_actual = ge_add(&p1, &p2);
-    @import("std").debug.assert(ge_equal(&result_actual, &result_expected));
+    std.debug.assert(ge_equal(&result_actual, &result_expected));
 }
 
 fn test_point_add_jacobian(tp1: SimplePoint3, tp2: SimplePoint3, res: SimplePoint2) void {
@@ -140,7 +173,7 @@ fn test_point_add_jacobian(tp1: SimplePoint3, tp2: SimplePoint3, res: SimplePoin
     const result_expected = simple_point2_to_ge(res);
     const result_actual_gej = gej_add(&p1, &p2);
     const result_actual = gej_to_ge(&result_actual_gej);
-    @import("std").debug.assert(ge_equal(&result_actual, &result_expected));
+    std.debug.assert(ge_equal(&result_actual, &result_expected));
 }
 
 fn test_point_mul(s: Scalar, tp: SimplePoint2, res: SimplePoint2) void {
@@ -148,10 +181,11 @@ fn test_point_mul(s: Scalar, tp: SimplePoint2, res: SimplePoint2) void {
     const result_expected = simple_point2_to_ge(res);
     const result_actual_gej = scalar_mul_gej(s, &p);
     const result_actual = gej_to_ge(&result_actual_gej);
-    @import("std").debug.assert(ge_equal(&result_actual, &result_expected));
+    std.debug.assert(ge_equal(&result_actual, &result_expected));
 }
 
 pub fn main() !void {
+    // TODO: consider restructuring using zig's testing capabilities
     test_point_add_affine(
         .{67021774492365321256634043516869791044054964063002935266026048760627130221114,
           22817883221438079958217963063610327523693969913024717835557258242342029550595},
@@ -243,4 +277,6 @@ pub fn main() !void {
         .{109441138145498884726545575659592733193661671281368885246963601136369148387669,
           83708880322787879701338478937074052809697986569225329829504559758598509123336}
     );
+
+    exercise4_calculate_Q();
 }
