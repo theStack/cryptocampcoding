@@ -1,7 +1,7 @@
 const std = @import("std");
 
 // week 1, exercise 1: use square-and-multiply algorithm
-fn fast_exp(base: u256, exponent: u256, modulus: u256) u256 {
+pub fn fast_exp(base: u256, exponent: u256, modulus: u256) u256 {
     var result: u256 = 1;
     var a_i: u256 = base; // squaring for next loop iteration (a_i = base ^ (2^i))
     for (0..256) |_i| {
