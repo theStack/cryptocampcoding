@@ -43,8 +43,9 @@ fn ge_add(p1: *const GE, p2: *const GE) GE {
 const GEJ = struct { x: FE, y: FE, z: FE, inf: bool };
 const point_at_infinity_gej = GEJ { .x = 0, .y = 0, .z = 0, .inf = true };
 
-// use "add-1986-cc" addition and "dbl-1998-cmo" doubling formulas
-// [https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html]
+// use "add-1986-cc" addition and "dbl-1998-cmo" doubling formulas from EFD
+// [https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-add-1986-cc]
+// [https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-dbl-1998-cmo]
 fn gej_add(p1: *const GEJ, p2: *const GEJ) GEJ {
     // trivial cases
     if (p1.inf) return p2.*;
