@@ -177,6 +177,7 @@ fn exercise5_calculate_repeated_doubling() void {
         }
         if (week1.fast_exp(2, i, secp256k1_N) == 1) {
             std.debug.print("Exercise 5:\ni = {d}\n", .{i});
+            std.debug.assert(i % 1000 == 349);
             break;
         }
     }
