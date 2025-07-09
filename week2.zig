@@ -143,6 +143,45 @@ fn exercise4_calculate_Q() void {
     std.debug.assert(Q_affine.x % 1000 == 452);
 }
 
+// week 2, secp256k1 exercise 5:
+// Define P_0 = G, and P_i+1 = P_i + P_i, what is the first
+// integer i > 0 for which P_i = G?
+fn exercise5_calculate_repeated_doubling() void {
+    // rephrase as
+    // 2^i * G = G  | * G^(-1)
+    // 2^i = 1 (mod n)
+    // i | n-1 (due to FLT: 2^(n-1) = 1 (mod n)
+    // Find D := all divisors of n-1
+    // For each divisor d in D, test if 2^d = 1 (mod n)
+
+    // factors determined with the help of Wolphram Alpha:
+    // https://www.wolframalpha.com/input?i=factorize+0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140
+    const prime_factors = [_]Scalar {
+        2, 2, 2, 2, 2, 2, 3, 149, 631, 107361793816595537, 174723607534414371449, 341948486974166000522343609283189,
+    };
+    // sanity check
+    var n_minus_one: Scalar = 1;
+    for (prime_factors) |factor| {
+        n_minus_one *= factor;
+    }
+    std.debug.assert(n_minus_one == secp256k1_N - 1);
+
+    // try all combinations (each bit in "combo" represents one prime factor, from smallest to largest)
+    for (1..(1<<prime_factors.len)) |combo| {
+        var i: Scalar = 1;
+        for (0..prime_factors.len) |_bit| {
+            const bit: u8 = @intCast(_bit);
+            if ((combo & (@as(u256, 1) << bit)) != 0) {
+                i *= prime_factors[bit];
+            }
+        }
+        if (week1.fast_exp(2, i, secp256k1_N) == 1) {
+            std.debug.print("Exercise 5:\ni = {d}\n", .{i});
+            break;
+        }
+    }
+}
+
 // more convenient point types for test vectors (null = point at infinity)
 const SimplePoint2 = ?struct{FE, FE};
 const SimplePoint3 = ?struct{FE, FE, FE};
@@ -280,4 +319,5 @@ pub fn main() !void {
     );
 
     exercise4_calculate_Q();
+    exercise5_calculate_repeated_doubling();
 }
